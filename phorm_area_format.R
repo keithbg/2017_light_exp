@@ -1,4 +1,4 @@
-## Script to format the surface area of Phorm mats
+  ## Script to format the surface area of Phorm mats
 ## KBG Feb-2018
 ## area calculated using imageJ
 
@@ -15,119 +15,94 @@
 #### Libraries #################################################################
 library(tidyverse)
 library(stringr)
+library(lubridate)
 library(broom)
 ################################################################################
 
 
 #### File Paths ################################################################
 dir_input <- file.path("/Users","KeithBG","Documents","UC Berkeley","CyanoMeta_NSF","LightExp", "Data","phorm_area_data")
-dir_out_fig <- file.path("/Users","KeithBG","Documents","UC Berkeley","CyanoMeta_NSF","LightExp", "Data","phorm_area_data", "output_figures")
 dir_out_table <- file.path("/Users","KeithBG","Documents","UC Berkeley","CyanoMeta_NSF","LightExp", "Data","phorm_area_data", "output_tables")
 ################################################################################
 
 #### Input data ####
 ## Read in file names
-area_files <- paste(dir_input, list.files(path= dir_input, pattern="*.tsv"), sep="/")
-area.data <- lapply(area_files, read_tsv)
+area_files <- file.path(dir_input, list.files(path= dir_input, pattern="*.tsv"))
+phorm.area.list <- lapply(area_files, read_tsv)
 
 ## Reformat the identification information
 format_ID_info <- function(df){
-id_info <- as.data.frame(str_split(df$ID, "_", simplify= TRUE), stringsAsFactors = FALSE)
-# day <-  as.numeric(as.factor(id_info[, 4]))
-id <- str_sub(df$ID, start=1, end= 8)
-site <- str_sub(id_info[, 1], start=1, end=1) # site column
-rep <- str_sub(id_info[, 1], start=2, end=3) # rep column
-date <- as.Date(paste0("2017", id_info[, 4]), format= "%Y%m%d")
-
-id_info <- cbind(id, site, rep, id_info[, 2:3], date)
-colnames(id_info) <- c("id", "site", "rep", "inoc", "treat", "date")
-
-df_ID <- data.frame(id_info, area= df$Area)
-return(df_ID)
+df2 <- df %>%
+    separate(ID, c("info", "inoc", "treat", "date")) %>%
+    separate(info, c("site", "rep"), sep=1) %>%
+    mutate(date= ymd(paste0("2017", .$date)))
+df3 <- cbind(uniqueID= df$ID, df2)
+return(df3)
 }
-area.data.format <- lapply(area.data, format_ID_info)
+phorm.area.format <- lapply(phorm.area.list, function(x) format_ID_info(x))
+
+# Clean up columns from first data frame
+phorm.area.format[[1]] <- select(phorm.area.format[[1]], -c(Mean, Min))
+names(phorm.area.format[[1]])[8] <- "Perimeter"
 
 ## Combine list elements into a single data frame
-area.data.df <- do.call("rbind", area.data.format)
-
+phorm.area <- do.call("rbind", phorm.area.format) %>%
+                  as_tibble() %>%
+                  rename(area= Area, notes_area= notes, source= inoc) %>%
+                  mutate(cobbleID= str_sub(uniqueID, start= 1, end= 8),
+                         site= ifelse(site== "a", "sf", "el"),
+                         area_cm= area/100) %>%
+                  select(uniqueID, cobbleID,site, date, rep, treat, source, area, area_cm, notes_area)
+rm(phorm.area.list)
+rm(phorm.area.format)
 
 ## Interpolate missing start areas on 07/25 with the mean of the starting area
-area.data.df[is.na(area.data.df$area)== TRUE, ]
-# hist(area.data.df[which(area.data.df$date == "2017-07-25"), "area"])
+phorm.area[is.na(phorm.area$area)== TRUE, ]
+# hist(phorm.area[which(phorm.area$date == "2017-07-25"), "area"])
 
-area.data.df %>%
+phorm.area %>%
   filter(date== "2017-07-25") %>%
   summarize(mean= mean(area, na.rm= TRUE),
             sd= sd(area, na.rm= TRUE),
             median= median(area, na.rm= TRUE))
 
-area.data.df[is.na(area.data.df$area)== TRUE & area.data.df$date=="2017-07-25", "area"] <- mean(area.data.df[area.data.df$date=="2017-07-25", ]$area, na.rm= TRUE)
+phorm.area[is.na(phorm.area$area)== TRUE & phorm.area$date=="2017-07-25", "area"] <- mean(phorm.area[phorm.area$date=="2017-07-25", ]$area, na.rm= TRUE)
+phorm.area[is.na(phorm.area$area)== TRUE & phorm.area$date=="2017-07-25", "area_cm"] <- mean(phorm.area[phorm.area$date=="2017-07-25", ]$area_cm, na.rm= TRUE)
 
 ## Convert area to cm^2
-area.data.df$area_cm <- area.data.df$area/100
 
-## Plot the data
-# source("/Users/KeithBG/R_functions/ggplot_themes.R")
-# light.theme <- theme(axis.text.x= element_text(angle= 45, hjust= 0.9, size= 10), legend.position = "top")
-exp.dates <- unique(area.data.df$date)
-exp.day <- c(0, 4, 7, 9, 12)
-
-
-plot.raw <- ggplot(area.data.df, aes(x= date, y= area_cm))
-
-plot.raw +
-  geom_line(aes(color= treat, linetype= inoc)) +
-  geom_point(aes(color= treat)) +
-  scale_x_date(breaks= exp.dates, labels= exp.day) +
-  facet_grid(site~rep) +
-  labs(x= "Experiment Day", y= "area cm^2") +
-  theme_kbg + light.theme
-
-# ggsave(last_plot(), filename= "area_plot_raw.pdf", width= 12, height= 6, units= "in", path= dir_out_fig)
 
 #### QA/QC the data ####
-## Investigate the slopes of each rep
-slopes <- area.data.df %>%
-  group_by(id) %>%
-  do(data.frame(
-    slope= lm(area_cm ~ date, data= .)$coefficients[2],
-    adj.r2= summary(lm(area_cm ~ date, data= .))$adj.r.squared))
 
-slopes[slopes$slope < 0.35, ]
+## Investigate the slopes of each rep
+# slopes <- phorm.area %>%
+#   group_by(cobbleID) %>%
+#   do(data.frame(
+#     slope= lm(area_cm ~ date, data= .)$coefficients[2],
+#     adj.r2= summary(lm(area_cm ~ date, data= .))$adj.r.squared))
 
 ## Treatments to drop
+
+# slopes[slopes$slope < 0.35, ]
 # b05_sf_s: plug fell out early on, no data
 # a02_el_l: worst slope in the SFSC site
 # b08_sf_s: negative slope
-# by removing 1 replicate from each site, reps = 9, but maintain a balanced design
+# Choosing just to remove b05_sf_s where the plug fell out on ~day 1 and there was no mat that ever grew
 
-area.data.df.curated <- area.data.df %>%
+
+phorm.area.curated <- phorm.area %>%
                         filter(!(site == "b" & rep == "05"))
 
 # %>%
 #                         filter(!(site == "a" & rep == "02"))
 
-# plot.curated <- ggplot(area.data.df.curated, aes(x= date, y= area_cm))
-#
-# plot.curated +
-#   geom_line(aes(color= treat, linetype= inoc)) +
-#   geom_point(aes(color= treat)) +
-#   scale_x_date(breaks= exp.dates, labels= exp.day) +
-#   facet_grid(site~rep) +
-#   labs(x= "Experiment Day", y= "area cm^2") +
-#   theme_kbg + light.theme
-#
-# ggsave(last_plot(), filename= "area_plot_curated.pdf", width= 12, height= 6, units= "in", path= dir_out_fig)
-
 
 #### Format data sets for plotting and statistics ####
 
-
-## Growth of patch at end of experiment on 6-Aug
-area.df.growth <- area.data.df.curated %>%
-  as_tibble() %>%
+## Size increase (growth) of patch at end of experiment on 6-Aug
+phorm.area.curated.growth <- phorm.area.curated %>%
   filter(date == "2017-07-25" | date == "2017-08-06") %>%
-  select(-area) %>%
+  select(-c(area, uniqueID, notes_area)) %>%
   spread(key= date, value= area_cm) %>%
   rename(start= `2017-07-25`, end = `2017-08-06`) %>%
   mutate(growth_cm= end - start)
