@@ -19,7 +19,6 @@ library(hms)
 
 #### File Paths ################################################################
 dir_input <- file.path("/Users","KeithBG","Documents","UC Berkeley","CyanoMeta_NSF","LightExp", "Data","licor_data")
-# dir_out_table <- file.path("/Users","KeithBG","Documents","UC Berkeley","CyanoMeta_NSF","LightExp", "Data","licor_data", "output_tables")
 ################################################################################
 
 
@@ -102,23 +101,31 @@ hobo.data.par <- format_hobo_data()
 #### COMBINE DATA FRAMES
 licor.data <- full_join(li1500.data.par, hobo.data.par) %>%
               select(Date, Time, date.time, id, site, sensor, par)
+
 rm(li1500.data.par)
 rm(hobo.data.par)
 
 #### ADD DEPLOYMENT LOCATIONS
 deploy.loc <- read_tsv(file.path(dir_input, "licor_deployment_locations.txt"))
-licor.data <- left_join(licor.data, deploy.loc)
+licor.data <- left_join(licor.data, deploy.loc) %>%
+                mutate(site= ifelse(site=="EL", "Elder site", "Eel site"))
 rm(deploy.loc)
 
 #### CALCULATE DAILY SUMMARY STATISTICS FOR PAR VALUES
+
 licor.data.stats <- licor.data %>%
   group_by(site, id, rep, sensor, Date) %>%
-  summarize(sum.par= sum(par),
-            mean.par= mean(par),
-            sd.par= sd(par),
-            med.par= median(par)) %>%
+  summarize(sum.par= sum(par, na.rm= TRUE),
+            mean.par= mean(par, na.rm= TRUE),
+            sd.par= sd(par, na.rm= TRUE),
+            med.par= median(par, na.rm= TRUE)) %>%
   filter(sum.par > 5000) # remove incomplete sampling day
 
+
+## Calculate mean daily sum of par for each replicate
+mean.site.par <- licor.data.stats %>%
+  group_by(site, rep) %>%
+  summarize(mean.sum.par= mean(sum.par))
 
 
 
