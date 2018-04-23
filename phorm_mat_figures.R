@@ -14,6 +14,7 @@ library(ggplot2)
 #### FILE PATHS ################################################################
 dir_input <- file.path("/Users","KeithBG","Documents","UC Berkeley","CyanoMeta_NSF","LightExp", "Scripts")
 dir_out_fig <- file.path("/Users","KeithBG","Documents","UC Berkeley","CyanoMeta_NSF","LightExp", "Data", "output_figures")
+dir_out_table <- file.path("/Users","KeithBG","Documents","UC Berkeley","CyanoMeta_NSF","LightExp", "Data","output_tables")
 ################################################################################
 
 
@@ -23,12 +24,23 @@ phorm.mat.data <- format_mat_data()
 ################################################################################
 
 
+#### SUMMARY TABLE  ############################################################
+## Cobble area
+phorm.mat.data %>%
+  mutate(treat= recode(.$treat, l="Light", s= "Shade")) %>%
+  group_by(site, treat, source) %>%
+  summarise(mean_cob_area_cm2= round(mean(cob_area_cm2, na.rm= TRUE), 0),
+            sd_cob_area_cm2= round(sd(cob_area_cm2, na.rm= TRUE), 0)) %>%
+  ungroup() %>%
+  mutate(area_cm2= str_c(.$mean_cob_area_cm2, "\U00B1", .$sd_cob_area_cm2, sep= " ")) %>%
+  write_tsv(path= file.path(dir_out_table, "cobble_area_table.txt"))
+################################################################################
+
+
 #### CREATE PLOTTING VARIABLES #################################################
 ## Source theme script
 source("/Users/KeithBG/Documents/UC Berkeley/CyanoMeta_NSF/LightExp/Scripts/ggplot_themes.R")
-x.axis.label <- expression(paste(italic("Phormidium"), " source"))
 ################################################################################
-
 
 
 #### MAKE PLOTS ################################################################
@@ -37,10 +49,10 @@ x.axis.label <- expression(paste(italic("Phormidium"), " source"))
 pe.plot <- ggplot(phorm.mat.data, aes(x= source, y= pe_ug_cm2))
 
 pe.plot +
-  geom_hline(yintercept = 0, size= 0.25, color= "black") +
+  x.int.line +
   geom_boxplot(aes(fill= treat)) +
-  labs(x= x.axis.label, y= expression(paste("Phycoerythrin  (", mu, "g / ", cm^{2}, ")"), family= "sans")) +
-  scale_fill_manual(values= c("white", "dark gray"), labels= c("Light", "Shade"), name= "Treatment") +
+  labs(x= x.axis.source, y= expression(paste("Phycoerythrin  (", "\U00B5", "g / ", cm^{2}, ")"), family= "sans")) +
+  fill.treat +
   facet_grid(.~site) +
   theme_mat + theme(legend.position = "bottom")
 ggsave(last_plot(), file= "phorm_pe_BP.pdf", height= 4.5, width= 6, units= "in", path= dir_out_fig)
@@ -49,10 +61,10 @@ ggsave(last_plot(), file= "phorm_pe_BP.pdf", height= 4.5, width= 6, units= "in",
 afdm.plot <- ggplot(phorm.mat.data, aes(x= source, y= afdm_mg_cm2))
 
 afdm.plot +
-  geom_hline(yintercept = 0, size= 0.25, color= "black") +
+  x.int.line +
   geom_boxplot(aes(fill= treat)) +
-  labs(x= x.axis.label, y= expression(paste("AFDM (mg / ", cm^{2}, ")"))) +
-  scale_fill_manual(values= c("white", "dark gray"), labels= c("Light", "Shade"), name= "Treatment") +
+  labs(x= x.axis.source, y= expression(paste("AFDM (mg / ", cm^{2}, ")"))) +
+  fill.treat +
   facet_grid(.~site) +
   theme_mat + theme(legend.position = "bottom")
 ggsave(last_plot(), file= "phorm_afdm_BP.pdf", height= 4.5, width= 6, units= "in", path= dir_out_fig)
@@ -63,10 +75,10 @@ ggsave(last_plot(), file= "phorm_afdm_BP.pdf", height= 4.5, width= 6, units= "in
 chla.plot <- ggplot(phorm.mat.data, aes(x= source, y= chla_ug_cm2))
 
 chla.plot +
-  geom_hline(yintercept = 0, size= 0.25, color= "black") +
+  x.int.line +
   geom_boxplot(aes(fill= treat)) +
-  labs(x= "Inoculation source", y= expression(paste("Chlorophyll-a  (", mu, "g / ", cm^{2}, ")"), family= "sans")) +
-  scale_fill_manual(values= c("white", "dark gray"), labels= c("Light", "Shade"), name= "Treatment") +
+  labs(x= "Inoculation source", y= expression(paste("Chlorophyll-a  (", "\U00B5", "g / ", cm^{2}, ")"), family= "sans")) +
+  fill.treat +
   facet_grid(.~site) +
   theme_mat + theme(legend.position = "bottom")
 
@@ -74,10 +86,10 @@ chla.plot +
 dw.plot <- ggplot(phorm.mat.data, aes(x= source, y= dw_mg_cm2))
 
 dw.plot +
-  geom_hline(yintercept = 0, size= 0.25, color= "black") +
+  x.int.line +
   geom_boxplot(aes(fill= treat)) +
   labs(x= "Inoculation source", y= expression(paste("DW (mg / ", cm^{2}, ")"))) +
-  scale_fill_manual(values= c("white", "dark gray"), labels= c("Light", "Shade"), name= "Treatment") +
+  fill.treat +
   facet_grid(.~site) +
   theme_mat + theme(legend.position = "bottom")
 

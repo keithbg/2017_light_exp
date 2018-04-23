@@ -78,7 +78,8 @@ hobo.temp.sum <- hobo.df %>%
                    group_by(site, rep, treat, date) %>%
                    summarise(mean.temp= mean(temp, na.rm= TRUE),
                              min.temp= min(temp, na.rm= TRUE),
-                             max.temp= max(temp, na.rm= TRUE))
+                             max.temp= max(temp, na.rm= TRUE)) %>%
+                   ungroup()
 ## Lux data
 hobo.lux.sum <- hobo.df %>%
   group_by(site, rep, treat, date) %>%

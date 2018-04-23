@@ -17,12 +17,13 @@ dir_out_fig <- file.path("/Users","KeithBG","Documents","UC Berkeley","CyanoMeta
 
 #### SOURCE DATA FORMATING SCRIPT  #############################################
 source(file.path(dir_input, "phorm_area_format.R"))
-# output data frame = hobo.df
+
 ################################################################################
 
 
 #### CREATE PLOTTING VARIABLES #################################################
 source("/Users/KeithBG/Documents/UC Berkeley/CyanoMeta_NSF/LightExp/Scripts/ggplot_themes.R")
+source("/Users/KeithBG/R_functions/ggplot_themes.R")
 light.theme <- theme(axis.text.x= element_text(angle= 45, hjust= 0.9, size= 10), legend.position = "top")
 exp.dates <- unique(phorm.area.curated$date)
 exp.day <- c(0, 4, 7, 9, 12)
@@ -30,9 +31,6 @@ exp.day <- c(0, 4, 7, 9, 12)
 x.axis.label <- expression(paste(italic("Phormidium"), " source"))
 y.axis.label <- expression(paste(italic("Phormidium"), " expansion (", cm^{2}, ")"))
 ################################################################################
-
-
-
 
 
 #### MAKE PLOTS ################################################################
@@ -47,7 +45,7 @@ plot.growth +
   labs(x= x.axis.label, y= y.axis.label) +
   facet_grid(.~site) +
   theme_mat + theme(legend.position = "bottom")
-# ggsave(last_plot(), file= "phorm_area_BP.pdf", height= 4.5, width= 6, units= "in", path= dir_out_fig)
+ggsave(last_plot(), file= "phorm_area_BP.pdf", height= 4.5, width= 6, units= "in", path= dir_out_fig)
 
 
 #### TIME SERIES PLOTS
@@ -59,7 +57,7 @@ plot.raw +
   facet_grid(site~rep) +
   labs(x= "Experiment Day", y= "area cm^2") +
   theme_kbg + light.theme
-# ggsave(last_plot(), filename= "phorm_area_plot_raw.pdf", width= 12, height= 6, units= "in", path= dir_out_fig)
+ggsave(last_plot(), filename= "phorm_area_timeseries_raw.pdf", width= 12, height= 6, units= "in", path= dir_out_fig)
 
 
 plot.curated <- ggplot(phorm.area.curated, aes(x= date, y= area_cm))
@@ -71,21 +69,4 @@ plot.curated +
   labs(x= "Experiment Day", y= "area cm^2") +
   #ggtitle("b05_sf_s and b08_sf_s removed") +
   theme_kbg + light.theme
-# ggsave(last_plot(), filename= "area_plot_curated.pdf", width= 12, height= 6, units= "in", path= dir_out_fig)
-
-
-
-
-## PRELIMINARY STATISTICS
-fit.elder <- lm(growth_cm ~ treat*source, data= subset(phorm.area.curated.growth, site == "Elder site"))
-summary(fit.elder)
-anova(fit.elder)
-
-fit.eel <- lm(growth_cm ~ treat*source, data= subset(phorm.area.curated.growth, site == "Eel site"))
-summary(fit.eel)
-anova(fit.eel)
-plot(fit.eel)
-
-## Bonferonni corrected p-values
-p.adjust(c(anova(fit.elder)[1,5], anova(fit.eel)[1,5]))
-
+ggsave(last_plot(), filename= "phorm_area_timeseries_curated.pdf", width= 12, height= 6, units= "in", path= dir_out_fig)

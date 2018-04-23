@@ -4,6 +4,17 @@
 library(ggplot2)
 library(grid)
 
+#### COLOR/FILL VARIABLES
+fill.treat <- scale_fill_manual(values= c("white", "dark gray"), labels= c("Light", "Shade"), name= "Treatment")
+
+#### AXIS LABELS
+x.axis.source <- expression(paste(italic("Phormidium"), " source"))
+
+#### OTHER
+x.int.line <- geom_hline(yintercept = 0, size= 0.25, color= "black")
+
+
+
 ## White background, no lines, white strip background
 theme_mat <- theme(panel.grid = element_blank(),
                    plot.margin = unit(c(1, 1, 1, 1), "cm"),
